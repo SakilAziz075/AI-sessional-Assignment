@@ -1,6 +1,7 @@
 import copy
 import random
 import collections
+import pandas
 
 class P2TimeTable:
     def __init__(self, phase1_timetable, morning_classes, working_days, slots_per_day):
@@ -119,3 +120,19 @@ class P2TimeTable:
     
     def __lt__(self, other):
         return self.score < other.getScore()
+
+    def getDataFrame(self):
+        result = []
+        for day_no in range(self.working_days):
+            for batch in self.batch_wise_slots:
+                prep_dict = {
+                    "Day": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][day_no],
+                    "Batch": str(batch[0]),
+                }
+                for slot_no in range(self.morning_classes):
+                    prep_dict[f"Slot {slot_no+1}"] = "" if batch[slot_no + 1][1] is None else f"{batch[slot_no + 1][1][0]} ({batch[slot_no + 1][1][1]})"
+                prep_dict["Break"] = "Break"
+                for slot_no in range(self.morning_classes, self.slots_per_day):
+                    prep_dict[f"Slot {slot_no+1}"] = "" if batch[slot_no + 1][1] is None else f"{batch[slot_no + 1][1][0]} ({batch[slot_no + 1][1][1]})"
+                result.append(prep_dict)
+        return pandas.DataFrame(result)

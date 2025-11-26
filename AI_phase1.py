@@ -1,6 +1,7 @@
 import csv
 import random
 import os
+import io
 
 DEFAULT_SEED = 42
 
@@ -19,18 +20,19 @@ TOTAL_SLOTS = 0
 
 #utility Functions
 
-def parse_input_file(filename, required_cols):
+def parse_input_file(file, required_cols):
     #Parses a CSV file and returns its content as a list of lists.
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"Error: File not found at {filename}")
+    # if not os.path.exists(filename):
+    #     raise FileNotFoundError(f"Error: File not found at {filename}")
 
-    with open(filename, 'r', newline='') as f:
-        reader = csv.reader(f)
-        header = next(reader) # Skip header
-        data = [row for row in reader]
+    # with open(filename, 'r', newline='') as f:
+
+    reader = csv.reader(io.TextIOWrapper(file, encoding='utf-8'))
+    header = next(reader) # Skip header
+    data = [row for row in reader]
 
     if required_cols and len(data[0]) < required_cols:
-         raise ValueError(f"Error: CSV file '{filename}' must have at least {required_cols} columns.")
+         raise ValueError(f"Error: CSV file must have at least {required_cols} columns.")
 
     return data
 
@@ -294,7 +296,7 @@ def generate_schedules(
     #            print(tt)
 
             #to csv file
-            write_to_csv(timetables_found)
+            #write_to_csv(timetables_found)
 
         else:
             print("\nNo viable schedules found with the given constraints.")
