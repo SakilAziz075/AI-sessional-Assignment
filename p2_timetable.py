@@ -1,4 +1,4 @@
-class ClassObj:
+class P2ClassObj:
     def __init__(self, subject, professor, room):
         self.subject = subject
         self.professor = professor
@@ -8,7 +8,7 @@ class ClassObj:
         return f"ClassObj({self.subject}, {self.professor}, {self.room})"
 
 
-class Timetable:
+class P2TimeTable:
     def __init__(self):
         # main structure
         self.data = {}   # { Batch : { Day : { Slot : ClassObj } } }
@@ -25,7 +25,7 @@ class Timetable:
             self.data[batch][day] = {}
 
         # Insert or overwrite class in this slot
-        self.data[batch][day][time_slot] = ClassObj(subject, professor, room)
+        self.data[batch][day][time_slot] = P2ClassObj(subject, professor, room)
 
     def get_class(self, batch, day, time_slot):
         """Return the class object in a time slot (if exists)."""
@@ -34,6 +34,10 @@ class Timetable:
     def get_batch_timetable(self, batch):
         """Return full timetable of a batch."""
         return self.data.get(batch, {})
+    
+    # TODO: Implement!!!
+    def mutate(self) -> P2TimeTable:
+        pass
 
     def print_timetable(self):
         """Pretty print the full timetable."""
