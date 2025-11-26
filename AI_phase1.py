@@ -101,23 +101,18 @@ def check_constraints(schedule, new_batch, new_slot, new_course):
 
     return True
 
-def solve_backtracking(classes_to_schedule, current_schedule, schedules_found):
+def solve_backtracking(classes_to_schedule, current_schedule):
    ##recursive backtracking solver
-    if len(schedules_found) >= NUM_SCHEDULES_TO_OUTPUT:
-        return True # Stop searching
 
     if not classes_to_schedule:
-        schedules_found.append(format_schedule_output(current_schedule))
-        print(f"🎉 Viable schedule #{len(schedules_found)} found.")
-        return False #searching for more schedules
+        print(f"Viable schedule found.")
+        return format_schedule_output(current_schedule)
 
-    #item(Batch, Course) to schedule
-    current_batch, current_course = classes_to_schedule[0]
-    remaining_classes = classes_to_schedule[1:]
-
+    index_to_schedule = random.randint(0, len(classes_to_schedule)-1)     #item(Batch, Course) to schedule
+    current_batch, current_course = classes_to_schedule[index_to_schedule]  #class at the random index
+    remaining_classes = classes_to_schedule[:index_to_schedule]+classes_to_schedule[index_to_schedule+1:]
+#    print(f"Depth {len(classes_to_schedule)}: Selected class index: {index_to_schedule}")
     current_instructor = COURSE_INFO[current_course]['instructor']
-
-
     available_slots = list(range(TOTAL_SLOTS))
 
     #random slot order to find different solutions
@@ -128,17 +123,16 @@ def solve_backtracking(classes_to_schedule, current_schedule, schedules_found):
         #check for conflict
         if current_schedule[current_batch][slot_index] is not None:
             continue
-
         # check iinstructor conflict
         if check_constraints(current_schedule, current_batch, slot_index, current_course):
-
             #update the schedule
             current_schedule[current_batch][slot_index] = (current_course, current_instructor)
 
+            #recursive step
+            result = solve_backtracking(remaining_classes, current_schedule)
 
-            if solve_backtracking(remaining_classes, current_schedule, schedules_found):
-                return True #stop signal
-
+            if result is not None:
+                return result
             #Backtrack
             current_schedule[current_batch][slot_index] = None
 
@@ -201,7 +195,7 @@ def write_to_csv(schedules, filename="timetables_output.csv"):
                             slot_index,
                             course_instructor
                         ])
-    print(f"\n✅ All schedules saved to '{filename}'")
+    print(f"\nAll schedules saved to '{filename}'")
 
 
 def get_user_input(prompt, type_func=str, default=None):
@@ -236,7 +230,7 @@ def generate_schedules(
     global CLASSES_PER_DAY, TOTAL_DAYS, NUM_SCHEDULES_TO_OUTPUT
     global CLASSES_BEFORE_RECESS, CLASSES_AFTER_RECESS
 
-    print("⏱️ Timetable Scheduler Setup")
+    print("Timetable Scheduler Setup")
 
 
     batch_file = batch_file or get_user_input("Enter Batch-Course CSV file name", default="batches.csv")
@@ -247,15 +241,15 @@ def generate_schedules(
 
 
     CLASSES_BEFORE_RECESS = classes_before_recess or get_user_input("Enter number of classes before recess", int, default=4)
-    CLASSES_AFTER_RECESS = classes_after_recess or get_user_input("Enter number of classes after recess", int, default=CLASSES_PER_DAY - CLASSES_BEFORE_RECESS)
+    CLASSES_AFTER_RECESS = CLASSES_PER_DAY-CLASSES_BEFORE_RECESS
 
     # Final Config
     random_seed = random_seed or get_user_input("Enter random seed (or leave blank for default 42)", int, default=DEFAULT_SEED)
     NUM_SCHEDULES_TO_OUTPUT = num_schedules or get_user_input("Enter number of viable schedules to output", int, default=10)
 
-    # Validate recess configuration
+    #Validate recess configuration
     if CLASSES_BEFORE_RECESS + CLASSES_AFTER_RECESS != CLASSES_PER_DAY:
-        print(f"\n⚠️ Warning: Recess configuration ({CLASSES_BEFORE_RECESS} + {CLASSES_AFTER_RECESS}) does not equal total slots per day ({CLASSES_PER_DAY}). Using total slots for scheduling.")
+        print(f"\nWarning: Recess configuration ({CLASSES_BEFORE_RECESS} + {CLASSES_AFTER_RECESS}) does not equal total slots per day ({CLASSES_PER_DAY}). Using total slots for scheduling.")
 
     #Set up random seed
  #   random.seed(random_seed)
@@ -270,17 +264,28 @@ def generate_schedules(
         print(f"Total slots available: {TOTAL_SLOTS}")
         print("Starting backtracking solver...")
 
-        #runningthe solver
-        shuffled_classes = CLASSES_TO_SCHEDULE[:]
-        random.shuffle(shuffled_classes)
+        while len(timetables_found) < NUM_SCHEDULES_TO_OUTPUT:
 
-        solve_backtracking(
-            shuffled_classes,
-            initial_schedule,
-            timetables_found
-        )
+            shuffled_classes = CLASSES_TO_SCHEDULE[:]
+            random.shuffle(shuffled_classes)
+
+            initial_schedule = initialize_schedule()
+            attempt_count = len(timetables_found) + 1
+            print(f"Attempting to find schedule #{attempt_count}...")
+
+            #solverreturns a single schedule or None
+            # The control is here: we try to find one solution per iteration.
+            new_schedule = solve_backtracking(shuffled_classes,initial_schedule)
+
+            if new_schedule is not None:
+                #append the returned 3D list to the output list
+                timetables_found.append(new_schedule)
+            else:
+                # If a solution is not found, print a message and continue
+                print("Failed to find a schedule on this randomization path. Retrying.")
+
         if timetables_found:
-       #     print(f"\n--- Outputting {len(timetables_found)} Viable Schedules ---")
+            print(f"\nOutputting {len(timetables_found)} Viable Schedules")
 #
  #           print("\n## Python List Output (3-Dimensional List)")
   #          for i, tt in enumerate(timetables_found):
