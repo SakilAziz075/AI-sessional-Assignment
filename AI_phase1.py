@@ -162,10 +162,10 @@ def format_schedule_output(schedule):
             if class_info:
                 course_code, instructor_id = class_info
 
-                slot_data = [slot_index, f"{course_code}-{instructor_id}"]
+                slot_data = [slot_index, (course_code, instructor_id)]
             else:
                 #empty slot
-                slot_data = [slot_index, "FREE"]
+                slot_data = [slot_index, None]
 
             batch_output.append(slot_data)
         output.append(batch_output)
@@ -176,7 +176,7 @@ def write_to_csv(schedules, filename="timetables_output.csv"):
     """Writes the list of schedules to a single CSV file."""
     with open(filename, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(["Schedule_ID", "BatchID", "SlotIndex", "CourseCode_Instructor"])
+        writer.writerow(["Schedule_ID", "BatchID", "SlotIndex", "CourseCode", "Instructor"])
 
         for i, schedule_list in enumerate(schedules):
             schedule_id = i + 1
@@ -188,12 +188,13 @@ def write_to_csv(schedules, filename="timetables_output.csv"):
                 for slot_data in batch_data[1:]:
                     slot_index, course_instructor = slot_data
 
-                    if course_instructor != "FREE":
+                    if course_instructor is not None:
                         writer.writerow([
                             schedule_id,
                             batch_id,
                             slot_index,
-                            course_instructor
+                            course_instructor[0],
+                            course_instructor[1]
                         ])
     print(f"\nAll schedules saved to '{filename}'")
 
@@ -245,7 +246,7 @@ def generate_schedules(
 
     # Final Config
     random_seed = random_seed or get_user_input("Enter random seed (or leave blank for default 42)", int, default=DEFAULT_SEED)
-    NUM_SCHEDULES_TO_OUTPUT = num_schedules or get_user_input("Enter number of viable schedules to output", int, default=10)
+    NUM_SCHEDULES_TO_OUTPUT = num_schedules or get_user_input("Enter number of viable schedules to output", int, default=100)
 
     #Validate recess configuration
     if CLASSES_BEFORE_RECESS + CLASSES_AFTER_RECESS != CLASSES_PER_DAY:
