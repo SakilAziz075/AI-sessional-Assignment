@@ -1,0 +1,211 @@
+\documentclass[a4paper,twoside,11pt]{article}
+
+\usepackage[margin=20mm,bindingoffset=10mm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+
+\begin{document}
+
+    \pagenumbering{gobble}
+    \begin{titlepage}
+        \vspace*{\fill}
+        \centering
+        \begin{figure}[H]
+            \centering
+            \includegraphics{tulogo.png}
+        \end{figure}
+        \vspace*{20mm}
+        {\Huge \bfseries Timetable Scheduler}\\[1em]
+        {\LARGE Sessional II Assignment\\ \textit{for}\\[0.5em] Artificial Intelligence (CO401)}\\
+        \vspace*{20mm}
+        \textit{Prepared by}\\[1em]
+        Debasish Bordoloi (CSB22003)\\
+        Sakil Aziz (CSB22012)\\
+        Debasish Bhuyan (CSB22023)\\
+        Bhaskar Jyoti Hazarika (CSB22031)\\
+        Yashwant Kumar Upadhyay (CSB22064)\\
+        Mriganku Krishan Yogi (CSB22079)\\[1em]
+        \textit{7\textsuperscript{th} Semester, Bachelor of Technology,\\
+        Department of Computer Science \& Engineering,\\
+        Tezpur University}\\[3em]
+
+        \textit{Submitted to}\\[1em]
+        Dr. Shobhanjana Kalita\\[1em]
+        \textit{Assistant Professor,\\
+        Department of Computer Science \& Engineering,\\
+        Tezpur University\\[2em]}
+
+        November, 2025\\
+        
+        \vspace*{\fill}
+    \end{titlepage}
+
+    \newpage
+    \thispagestyle{plain} % or 'empty' if no header/footer is desired
+    \mbox{}
+    \newpage
+
+    \pagenumbering{arabic}
+
+    \begin{abstract}
+        The scheduling of academic timetables is a classic formulation of a Constraint Satisfaction Problem (CSP) and Constraint Optimization Problem (COP). It involves assigning resources (instructors, rooms, etc.) to tasks (classes) at specific times while adhering to strict rules. This project proposes an automated Timetable Scheduler that utilizes a two-phase Artificial Intelligence approach. Phase I focuses on generating valid solutions that satisfy all \emph{hard} constraints (e.g., preventing double-booking of professors). Phase II employs an evolutionary local search algorithm to refine these valid schedules against \emph{soft} constraints (e.g., minimizing gaps between classes, avoiding early morning saturation). The result is a system capable of producing a conflict-free, human-friendly academic schedule.
+    \end{abstract}
+
+    \section{Introduction}
+        \subsection{Problem Statement}
+            Manual timetable generation is a tedious, error-prone task that grows exponentially in complexity with the number of subjects, batches, and faculty members. A simple "legal" schedule often fails to consider the comfort of the students and faculty, leading to issues like erratic gaps between lectures or exhausting consecutive sessions. 
+            
+        \subsection{Objectives}
+            The primary objective is to develop a software agent that generates an optimized timetable. The system aims to optimize the following \emph{soft constraints}:
+            \begin{enumerate}
+                \itemsep0em
+                \item \textbf{Gap Minimization}: Reducing idle time between classes for students.
+                \item \textbf{Load Balancing}: Avoiding cases where only a single class exists in a forenoon or afternoon session (minimizing travel for just one hour).
+                \item \textbf{Time Preference}: Minimizing the frequency of early morning classes, depending on configuration.
+                \item \textbf{Subject Distribution}: Preventing the concentration of the same subject on a single day (e.g., avoiding three Math lectures on Monday).
+            \end{enumerate}
+
+    \section{System Methodology}
+        Our solution architecture is divided into two distinct processing phases.
+
+        \subsection{Phase I: Constraint Satisfaction (Validity)}
+            The first phase addresses the Hard Constraints using a backtracking search. A hard constraint is a condition that must be met for the timetable to be considered valid.
+
+            \begin{description}
+                \item[Instructor Conflict] A professor cannot teach two different batches at the same time.
+                \item[Batch Conflict] A student batch cannot have two classes assigned to the same time slot.
+            \end{description}
+
+            \paragraph{Algorithm: Randomized Backtracking}
+                The system reads batch and course data from CSV files. It attempts to place classes recursively:
+                \begin{enumerate}
+                    \itemsep0em
+                    \item Select a class (Subject-Batch pair) from the list of classes to schedule.
+                    \item Shuffle available time slots to ensure randomness.
+                    \item Attempt to place the class in a slot.
+                    \item Check Hard Constraints (is the slot empty? is the instructor free?).
+                    \item If valid, recursively attempt to schedule the next class.
+                    \item If a dead-end is reached, backtrack (remove the class) and try the next slot.
+                    \item This process repeats until $K$ valid timetables are found or the search space is exhausted.
+                \end{enumerate}
+        
+        \subsection{Phase II: Evolutionary Optimization}
+            The second phase treats the schedule as an optimization problem. It takes the valid timetables from Phase I and evolves them to minimize a penalty score.
+
+            \paragraph{Algorithm Steps}
+            
+            \begin{enumerate}
+                \itemsep0em
+                \item \textbf{Initialization}: Load the $K$ valid timetables into a Min-Heap (priority queue) based on their penalty score.
+                \item \textbf{Mutation}:
+                \begin{itemize}
+                    \itemsep0em
+                    \item Extract the best schedule from the heap.
+                    \item Perform a Mutation: Select two random batches and two random slots. Swap the classes between these slots (or move a class to an empty slot) only if the swap does not violate hard constraints (check for instructor /batch clashes).
+                    \item This generates a new candidate timetable.
+                    \item Repeating this for $K$ timetables, will result int $NK$ timetables.
+                \end{itemize}
+                \item \textbf{Selection}: Any remaining timetables inside the heap are first deleted. These deleted ones are essentially the timetables rejected by the evolutionary process. Both the original and the mutated timetables are pushed back into the heap. The heap property ensures the best-performing schedules are always prioritized for the next iteration.
+                \item \textbf{Termination}: The system uses a \texttt{patience} counter.
+                \begin{itemize}
+                    \itemsep0em
+                    \item If the best score in the heap improves, patience is rest to \texttt{max\_patience}.
+                    \item If the score does not improve, patience is decremented.
+                    \item The process terminates when \texttt{patience} reaches 0.
+                \end{itemize}
+            \end{enumerate}
+
+    \section{PEAS Description}
+        To formally define the Artificial Intelligence agent, we analyze the Performance, Environment, Actuators, and Sensors (PEAS).
+
+        \subsection{Performance Measures}
+            The agent is evaluated on a multiplicative penalty-based scoring system. Lower scores indicate better performance. The score is calculated as:
+
+            \begin{center}
+                $score = (1 + P_{gaps}) \times (1 + P_{single}) \times (1 + P_{morning}) * (1 + P_{concentration})$
+            \end{center}
+
+            where:
+            \begin{itemize}
+                \item $P_{gaps}$: Cumulative count of empty slots between classes in a day.
+                \item $P_{single}$: Penalty added if a batch has exactly one class in the pre-recess or post-recess session (heavier penalty for afternoon single classes).
+                \item $P_{morning}$: Count of classes scheduled in the very first slot of the day.
+                \item $P_{concentration}$: Penalty based on the frequency of the same subject appearing multiple times in one day.
+            \end{itemize}
+
+        \subsection{Environment}
+
+
+            \subsubsection{Entities}
+                The environment includes:
+                \begin{itemize}
+                    \itemsep0em
+                    \item List of subjects/courses to be scheduled.
+                    \item List of batches/student groups.
+                    \item List of professors/teachers.
+                    \item Absolute constraints (e.g., professor availability, specific class durations, classroom availability, etc.).
+                    \item The objective function and optimization goals.
+                    \item The set of K or NK candidate timetables that are being generated and evaluated during Phase I and Phase II.
+                \end{itemize}
+
+            \subsubsection{Environment Categorization}
+
+                \begin{itemize}
+                    \itemsep0em
+                    \item \textbf{Fully Observable}: The agent has access to the entire state of the timetable.
+                    \item \textbf{Deterministic}: The outcome of a specific swap is known; the randomness lies only in the selection of the swap targets.
+                    \item \textbf{Sequential}: Mutations are applied iteratively to previous states.
+                    \item \textbf{Static}: The class requirements do not change during execution.
+                    \item \textbf{Discrete}: Time slots are discrete, discontinuous.
+                    \item \textbf{Single-Agent}: Only one agent is working in the environment.
+                \end{itemize}
+
+        \subsection{Actuators}
+            The actuators in our problem setup are:
+            \begin{itemize}
+                \itemsep0em
+                \item \textbf{Timetable Generation}: Placing a specific Subject-Batch-Professor triplet into a specific Day-Time slot (Phase I).
+                \item \textbf{Evolutionary Changes (Swaps)}: Swapping the positions of two scheduled classes within the timetable (Phase II).
+            \end{itemize}
+
+        \subsection{Sensors}
+            The sensors in our setup are:
+            \begin{itemize}
+                \itemsep0em
+                \item \textbf{Absolute Constraint Conflict Detector}: Senses the existence of an absolute constraint violation (e.g., two classes for the same professor at the same time).
+                \item \textbf{Objective Function Evaluator}: Senses the score/penalty of a given candidate timetable against the optimization goals (gaps, single-class sessions, early morning classes, subject concentration).
+                \item \textbf{Timetable State Reader}: Senses the current arrangement (all scheduled classes and their slots) of the timetable being evaluated.
+                \item \textbf{Termination Condition Reader}: Senses the number of iterations P since the last improvement to decide when to stop the Phase II process.
+            \end{itemize}
+
+    \section{Implementation Details}
+        The logic of the time table scheduler has been written using Python. We have also used the followign Python libraries for different ends:
+        \begin{itemize}
+            \itemsep0em
+            \item \texttt{csv}, \texttt{io}, \texttt{os}: For file handling and data ingestion.
+            \item \texttt{random}: For stochastic selection in backtracking and mutation.
+            \item \texttt{heapq}: For efficient priority queue management in the genetic algorithm.
+            \item \texttt{pandas}: For formatting the final output into a readable DataFrame.
+            \item \texttt{streamlit}: For the user interface and progress visualization.
+        \end{itemize}
+
+    \section{Conclusion}
+
+        This project implements a robust academic scheduler. By combining Randomized Backtracking for validity with a Heap-based Genetic Algorithm for optimization, the system effectively balances strict requirements with user comfort. The multiplicative scoring model ensures that a schedule must be "good enough" across all soft constraints rather than just optimizing one at the expense of others.
+            
+
+
+
+
+                
+
+
+
+
+
+
+
+
+
+
+\end{document}
